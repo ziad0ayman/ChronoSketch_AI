@@ -1,0 +1,22 @@
+[project]
+name = "chronosketch-ai"
+version = "0.1.0"
+description = "Automated Whiteboard Animation System"
+requires-python = ">=3.14"
+dependencies = [
+    "openai-whisper==20250625",
+    "groq==1.2.0",
+    "sentence-transformers==5.5.0",
+    "cairosvg==2.9.0",
+    "moviepy==2.2.1",
+    "ffmpeg-python==0.2.0",
+    "svg-path==7.0",
+    "Pillow>=12",
+    "pydantic>=2",
+]
+
+[project.scripts]
+chronosketch = "src.main:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

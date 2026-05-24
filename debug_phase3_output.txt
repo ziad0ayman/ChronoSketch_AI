@@ -1,0 +1,176 @@
+Loaded 21 draw events
+
+Indexed 1711 SVGs from src\library\assets
+
+Sample indexed SVGs (first 20):
+   1. a-arrow-down                   keywords=['a', 'arrow', 'down']
+   2. a-arrow-up                     keywords=['a', 'arrow', 'up']
+   3. a-large-small                  keywords=['a', 'large', 'small']
+   4. accessibility                  keywords=['accessibility']
+   5. activity                       keywords=['activity']
+   6. air-vent                       keywords=['air', 'vent']
+   7. airplay                        keywords=['airplay']
+   8. alarm-clock                    keywords=['alarm', 'clock']
+   9. alarm-clock-check              keywords=['alarm', 'clock', 'check']
+  10. alarm-clock-minus              keywords=['alarm', 'clock', 'minus']
+  11. alarm-clock-off                keywords=['alarm', 'clock', 'off']
+  12. alarm-clock-plus               keywords=['alarm', 'clock', 'plus']
+  13. alarm-smoke                    keywords=['alarm', 'smoke']
+  14. album                          keywords=['album']
+  15. align-center-horizontal        keywords=['align', 'center', 'horizontal']
+  16. align-center-vertical          keywords=['align', 'center', 'vertical']
+  17. align-end-horizontal           keywords=['align', 'end', 'horizontal']
+  18. align-end-vertical             keywords=['align', 'end', 'vertical']
+  19. align-horizontal-distribute-center keywords=['align', 'horizontal', 'distribute', 'center']
+  20. align-horizontal-distribute-end keywords=['align', 'horizontal', 'distribute', 'end']
+
+Loading embedding model: all-MiniLM-L6-v2
+
+  Event # 1 | keyword='explain'
+         #1: reply                          (score=0.469)
+         #2: info                           (score=0.468)
+         #3: quote                          (score=0.450)
+         #4: puzzle                         (score=0.442)
+         #5: diff                           (score=0.441)
+
+  Event # 2 | keyword='cloud storage'
+         #1: cloud-backup                   (score=0.720)
+         #2: cloud                          (score=0.715)
+         #3: cloud-upload                   (score=0.705)
+         #4: cloud-sync                     (score=0.656)
+         #5: cloud-download                 (score=0.656)
+
+  Event # 3 | keyword='database'
+         #1: database                       (score=1.000)
+         #2: database-search                (score=0.741)
+         #3: database-zap                   (score=0.653)
+         #4: table                          (score=0.579)
+         #5: database-backup                (score=0.574)
+
+  Event # 4 | keyword='stores information'
+         #1: store                          (score=0.752)
+         #2: database                       (score=0.456)
+         #3: shopping-bag                   (score=0.444)
+         #4: search                         (score=0.439)
+         #5: locate                         (score=0.439)
+
+  Event # 5 | keyword='user information'
+         #1: users                          (score=0.716)
+         #2: user                           (score=0.641)
+         #3: user-search                    (score=0.595)
+         #4: user-key                       (score=0.588)
+         #5: user-check                     (score=0.581)
+
+  Event # 6 | keyword='connects to server'
+         #1: server                         (score=0.693)
+         #2: server-off                     (score=0.526)
+         #3: server-cog                     (score=0.495)
+         #4: server-crash                   (score=0.435)
+         #5: network                        (score=0.415)
+
+  Event # 7 | keyword='handles requests'
+         #1: hand-grab                      (score=0.311)
+         #2: workflow                       (score=0.310)
+         #3: server                         (score=0.309)
+         #4: hand-helping                   (score=0.308)
+         #5: mails                          (score=0.301)
+
+  Event # 8 | keyword='incoming requests'
+         #1: phone-incoming                 (score=0.489)
+         #2: server                         (score=0.373)
+         #3: phone-outgoing                 (score=0.360)
+         #4: phone-forwarded                (score=0.309)
+         #5: upload                         (score=0.309)
+
+  Event # 9 | keyword='server security'
+         #1: server                         (score=0.611)
+         #2: server-cog                     (score=0.435)
+         #3: user-lock                      (score=0.410)
+         #4: server-off                     (score=0.393)
+         #5: file-lock                      (score=0.347)
+
+  Event #11 | keyword='shield for security'
+         #1: shield                         (score=0.739)
+         #2: shield-check                   (score=0.682)
+         #3: shield-user                    (score=0.679)
+         #4: shield-alert                   (score=0.666)
+         #5: shield-plus                    (score=0.647)
+
+  Event #12 | keyword='users connect'
+         #1: users                          (score=0.694)
+         #2: user                           (score=0.615)
+         #3: user-check                     (score=0.593)
+         #4: user-plus                      (score=0.587)
+         #5: user-key                       (score=0.582)
+
+  Event #13 | keyword='laptop or smartphone'
+         #1: laptop                         (score=0.738)
+         #2: smartphone                     (score=0.727)
+         #3: notebook                       (score=0.582)
+         #4: tablet-smartphone              (score=0.568)
+         #5: computer                       (score=0.558)
+
+  Event #14 | keyword='send files'
+         #1: files                          (score=0.627)
+         #2: file                           (score=0.602)
+         #3: file-box                       (score=0.572)
+         #4: file-up                        (score=0.564)
+         #5: send                           (score=0.564)
+
+  Event #15 | keyword='get stored'
+         #1: store                          (score=0.505)
+         #2: archive                        (score=0.402)
+         #3: database                       (score=0.394)
+         #4: file                           (score=0.371)
+         #5: save                           (score=0.359)
+
+  Event #16 | keyword='in cloud'
+         #1: cloud                          (score=0.802)
+         #2: cloud-off                      (score=0.655)
+         #3: cloud-check                    (score=0.650)
+         #4: cloud-sun                      (score=0.637)
+         #5: cloud-download                 (score=0.625)
+
+  Event #17 | keyword='settings panel'
+         #1: settings                       (score=0.767)
+         #2: settings-2                     (score=0.723)
+         #3: panel-right                    (score=0.645)
+         #4: panel-left                     (score=0.595)
+         #5: panel-top                      (score=0.585)
+
+  Event #18 | keyword='configure everything'
+         #1: settings                       (score=0.588)
+         #2: settings-2                     (score=0.469)
+         #3: server                         (score=0.336)
+         #4: replace-all                    (score=0.334)
+         #5: blender                        (score=0.325)
+
+  Event #19 | keyword='cloud icon'
+         #1: cloud                          (score=0.676)
+         #2: cloud-lightning                (score=0.639)
+         #3: cloud-alert                    (score=0.610)
+         #4: cloud-fog                      (score=0.595)
+         #5: cloud-upload                   (score=0.594)
+
+  Event #21 | keyword='sync status'
+         #1: cloud-sync                     (score=0.672)
+         #2: folder-sync                    (score=0.645)
+         #3: calendar-sync                  (score=0.537)
+         #4: wifi-sync                      (score=0.536)
+         #5: cloud-check                    (score=0.366)
+
+  Event #22 | keyword='checkmark confirms'
+         #1: bookmark-check                 (score=0.620)
+         #2: check-check                    (score=0.612)
+         #3: check                          (score=0.512)
+         #4: bookmark                       (score=0.496)
+         #5: list-checks                    (score=0.459)
+
+  Event #23 | keyword='upload complete'
+         #1: upload                         (score=0.747)
+         #2: cloud-upload                   (score=0.601)
+         #3: file-up                        (score=0.600)
+         #4: hard-drive-upload              (score=0.545)
+         #5: image-up                       (score=0.509)
+
+Saved 21 assets to data/scenes/assets.json

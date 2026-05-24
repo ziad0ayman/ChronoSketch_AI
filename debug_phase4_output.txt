@@ -1,0 +1,93 @@
+Loaded 19 events, 18 assets
+
+############################################################
+RENDERING TIMELINE (24 fps)
+############################################################
+ Evt Action         Keyword                   Time range         Frames
+----------------------------------------------------------------------
+  Gap?     
+          1 draw           explain                   0.00-1.02s    24
+          2 draw           cloud storage             1.02-1.90s    21
+  BLANK                 (time gap)                1.90-3.44s    36
+          3 draw           database                  3.44-4.92s    35
+  BLANK                 (time gap)                4.92-5.98s    25
+          4 draw           stores user               5.98-7.56s    37
+          5 draw           information               7.56-8.52s    23
+          6 draw           connects to               8.52-9.70s    28
+          7 draw           handles requests          9.70-10.44s    17
+  BLANK                 (time gap)                10.44-12.16s    41
+          8 draw           server sits               12.16-13.46s    31
+          9 draw           security shield           13.46-14.34s    21
+  BLANK                 (time gap)                14.34-15.56s    29
+         10 clear_canvas   -                         15.56-15.56s     2
+         11 draw           users connect             15.56-17.30s    41
+         12 draw           laptop smartphone         17.30-18.38s    25
+  BLANK                 (time gap)                18.38-19.48s    26
+         13 draw           send files                19.48-20.54s    25
+         14 draw           stored in                 20.54-21.50s    23
+         15 draw           cloud folders             21.50-22.56s    25
+  BLANK                 (time gap)                22.56-23.54s    23
+         16 draw           gear icon                 23.54-25.68s    51
+         17 draw           settings panel            25.68-27.08s    33
+  BLANK                 (time gap)                27.08-27.86s    18
+         18 draw           cloud icon                27.86-29.54s    40
+         19 draw           sync status               29.54-33.50s    95
+
+  Event frames: 597
+  Gap frames: 198
+  Target frames (33.50s @ 24fps): 804
+  Final padding: 9 blank white frames
+
+============================================================
+TRACER: Event #1 | keyword='explain'
+        SVG: src\library\assets\reply.svg
+        Paths: 2, total length: 34.43
+        Path #0: d(len=25) length=20.28
+        Path #1: d(len=13) length=14.14
+        progress=0.0: PNG=11071 bytes, size=(1920, 1080)
+        progress=0.5: PNG=16585 bytes, size=(1920, 1080)
+        progress=1.0: PNG=17424 bytes, size=(1920, 1080)
+
+============================================================
+TRACER: Event #2 | keyword='cloud storage'
+        SVG: src\library\assets\cloud-backup.svg
+        Paths: 3, total length: 69.79
+        Path #0: d(len=56) length=35.49
+        Path #1: d(len=9) length=8.00
+        Path #2: d(len=72) length=26.30
+        progress=0.0: PNG=12222 bytes, size=(1920, 1080)
+        progress=0.5: PNG=28132 bytes, size=(1920, 1080)
+        progress=1.0: PNG=39813 bytes, size=(1920, 1080)
+
+============================================================
+TRACER: Event #3 | keyword='database'
+        SVG: src\library\assets\database.svg
+        Paths: 2, total length: 68.09
+        Path #0: d(len=25) length=48.05
+        Path #1: d(len=21) length=20.05
+        progress=0.0: PNG=22457 bytes, size=(1920, 1080)
+        progress=0.5: PNG=30470 bytes, size=(1920, 1080)
+        progress=1.0: PNG=34381 bytes, size=(1920, 1080)
+
+  Event #4: stores user -> file-user.svg
+  Event #5: information -> info.svg
+  Event #6: connects to -> network.svg
+  Event #7: handles requests -> hand-grab.svg
+  Event #8: server sits -> server.svg
+  Event #9: security shield -> shield.svg
+  Event #11: users connect -> users.svg
+  Event #12: laptop smartphone -> smartphone.svg
+  Event #13: send files -> files.svg
+  Event #14: stored in -> store.svg
+  Event #15: cloud folders -> folders.svg
+  Event #16: gear icon -> ribbon.svg
+  Event #17: settings panel -> settings.svg
+  Event #18: cloud icon -> cloud.svg
+  Event #19: sync status -> cloud-sync.svg
+
+============================================================
+CHECKS
+============================================================
+  Events missing assets: [10]
+  No orphaned assets
+  All 18 SVG paths resolve to files
