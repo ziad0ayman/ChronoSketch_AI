@@ -1,5 +1,5 @@
 from src.shared.models import WordTimestamp
-from src.brain.schemas import build_prompt, SCENE_EVENT_ADAPTER
+from src.brain.schemas import build_prompt, SCENE_RAW_ADAPTER
 from src.brain.orchestrator import Orchestrator
 
 
@@ -15,21 +15,22 @@ def test_build_prompt():
 def test_prompt_requires_full_coverage():
     words = [WordTimestamp(word="a", start=0.0, end=0.5)]
     prompt = build_prompt(words)
-    assert "NO WORD" in prompt or "EVERY WORD" in prompt
-    assert "last event of the chunk must end" in prompt
+    assert "EVERY WORD" in prompt
+    assert "Max 3 elements per scene" in prompt
 
 
 def test_schema_validation():
     raw = """[
-        {"event_id": 1, "action": "draw", "start_time": 0.0, "end_time": 2.5,
-         "search_keyword": "cell division"},
-        {"event_id": 2, "action": "clear_canvas", "start_time": 30.0, "end_time": 30.5,
-         "search_keyword": ""}
+        {"start_time": 0.0, "end_time": 2.5,
+         "elements": [{"keyword": "cell division"}, {"keyword": "mitosis"}]},
+        {"start_time": 3.0, "end_time": 5.0,
+         "elements": [{"keyword": "protein"}]}
     ]"""
-    events = SCENE_EVENT_ADAPTER.validate_json(raw)
-    assert len(events) == 2
-    assert events[0].action == "draw"
-    assert events[1].action == "clear_canvas"
+    scenes = SCENE_RAW_ADAPTER.validate_json(raw)
+    assert len(scenes) == 2
+    assert len(scenes[0].elements) == 2
+    assert scenes[0].elements[0].keyword == "cell division"
+    assert scenes[0].elements[1].keyword == "mitosis"
 
 
 def test_chunk_splitting():
@@ -45,5 +46,5 @@ def test_chunk_splitting():
 
 def test_orchestrator_no_key():
     o = Orchestrator()
-    events = o.plan_scenes([])
-    assert events == []
+    elements = o.plan_scenes([])
+    assert elements == []

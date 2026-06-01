@@ -11,3 +11,6 @@ data/scenes/
 *.mp4
 *.wav
 *.log
+debug_*_output.txt
+.venv/
+venv/

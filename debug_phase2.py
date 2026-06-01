@@ -1,13 +1,14 @@
 """
-Debug Phase 2: The Brain — LLM scene planning
+Debug Phase 2: The Brain — LLM scene planning (scene+element format)
 Run: python debug_phase2.py
 Writes output to debug_phase2_output.txt (UTF-8)
 """
 import json
 from groq import Groq
-from src.shared.models import WordTimestamp
+from src.shared.models import WordTimestamp, SceneElement
 from src.shared.config import GROQ_API_KEY, LLM_MODEL, CHUNK_DURATION
-from src.brain.schemas import build_prompt, SCENE_EVENT_ADAPTER
+from src.brain.schemas import build_prompt, SCENE_RAW_ADAPTER
+from src.hand.layout import get_positions
 
 TRANSCRIPT_PATH = "data/transcripts/words.json"
 OUTPUT_PATH = "data/scenes/scenes.json"
@@ -22,7 +23,7 @@ with open(TRANSCRIPT_PATH) as f:
     words = [WordTimestamp(**w) for w in json.load(f)]
 echo(f"Loaded {len(words)} words\n")
 
-# Step 2: Chunk splitting (mirrors orchestrator.py logic)
+# Step 2: Chunk splitting
 total_dur = words[-1].end - words[0].start if words else 0
 
 def split_chunks(words, chunk_dur=CHUNK_DURATION):
@@ -48,14 +49,15 @@ else:
     for i, c in enumerate(chunks):
         echo(f"  Chunk {i+1}: {len(c)} words, {c[0].start:.2f}s - {c[-1].end:.2f}s")
 
-# Step 3: Call LLM chunk by chunk
+# Step 3: Call LLM
 client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 if not client:
     echo("\nERROR: GROQ_API_KEY not set")
     raise SystemExit(1)
 
-all_events = []
-next_id = 1
+all_elements: list[SceneElement] = []
+next_element_id = 1
+next_scene_id = 1
 
 for i, chunk in enumerate(chunks):
     echo(f"\n{'='*60}")
@@ -85,38 +87,63 @@ for i, chunk in enumerate(chunks):
         echo(f"\n*** JSON PARSE FAILED: {e} ***")
         continue
 
-    valid = []
-    for item in data:
-        try:
-            ev = SCENE_EVENT_ADAPTER.validate_python([item])[0]
-            valid.append(ev)
-        except Exception as e:
-            echo(f"  Skipping invalid event: {e}")
+    try:
+        scenes = SCENE_RAW_ADAPTER.validate_python(data)
+    except Exception as e:
+        echo(f"\n*** VALIDATION FAILED: {e} ***")
+        continue
 
-    echo(f"\n  LLM returned {len(data)} events, {len(valid)} valid")
+    echo(f"\n  LLM returned {len(scenes)} scenes")
 
-    for ev in valid:
-        old_id = ev.event_id
-        ev.event_id = next_id
-        echo(f"  Event #{old_id} -> global #{next_id}: action={ev.action} "
-             f"keyword='{ev.search_keyword}' "
-             f"time=[{ev.start_time:.2f}s-{ev.end_time:.2f}s]")
-        next_id += 1
+    for scene in scenes:
+        count = len(scene.elements)
+        positions = get_positions(count)
+        scene_words = [w for w in chunk if scene.start_time <= w.start < scene.end_time]
+        echo(f"\n  Scene: [{scene.start_time:.2f}-{scene.end_time:.2f}] ({count} elements, {len(scene_words)} words):")
+        for idx, raw_el in enumerate(scene.elements):
+            px, py = positions[idx]
+            if scene_words:
+                start_w = int((idx / count) * len(scene_words))
+                end_w = int(((idx + 1) / count) * len(scene_words))
+                group = scene_words[start_w:end_w]
+                if group:
+                    start = group[0].start
+                    end = group[-1].end
+                else:
+                    start = scene.start_time + (idx / count) * (scene.end_time - scene.start_time)
+                    end = scene.start_time + ((idx + 1) / count) * (scene.end_time - scene.start_time)
+            else:
+                start = scene.start_time + (idx / count) * (scene.end_time - scene.start_time)
+                end = scene.start_time + ((idx + 1) / count) * (scene.end_time - scene.start_time)
+            se = SceneElement(
+                element_id=next_element_id,
+                scene_id=next_scene_id,
+                keyword=raw_el.keyword,
+                start_time=start,
+                end_time=end,
+                pos_x=px,
+                pos_y=py,
+            )
+            echo(f"    #{se.element_id}: keyword='{se.keyword}' "
+                 f"time=[{se.start_time:.2f}-{se.end_time:.2f}] "
+                 f"pos=({se.pos_x:.0f},{se.pos_y:.0f})")
+            next_element_id += 1
+            all_elements.append(se)
+        next_scene_id += 1
 
-    all_events.extend(valid)
-
-# Step 4: Final summary
+# Step 4: Summary
 echo(f"\n{'='*60}")
-echo(f"TOTAL: {len(all_events)} scene events")
+echo(f"TOTAL: {len(all_elements)} scene elements")
 echo(f"{'='*60}")
-for ev in all_events:
-    echo(f"  #{ev.event_id:>2} | {ev.action:<12} | {ev.search_keyword:<30} | "
-         f"{ev.start_time:.2f}s -> {ev.end_time:.2f}s")
+for el in all_elements:
+    echo(f"  #{el.element_id:>2} | scene={el.scene_id:>2} | {el.keyword:<30} | "
+         f"{el.start_time:.2f}s -> {el.end_time:.2f}s | "
+         f"pos=({el.pos_x:.0f},{el.pos_y:.0f})")
 
 # Step 5: Save
 with open(OUTPUT_PATH, "w") as f:
-    json.dump([e.model_dump() for e in all_events], f, indent=2)
-echo(f"\nSaved scenes to {OUTPUT_PATH}")
+    json.dump([e.model_dump() for e in all_elements], f, indent=2)
+echo(f"\nSaved elements to {OUTPUT_PATH}")
 
 with open(LOG_PATH, "w", encoding="utf-8") as f:
     f.write("\n".join(log_lines))

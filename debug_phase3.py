@@ -7,7 +7,7 @@ import json
 import numpy as np
 from pathlib import Path
 from sentence_transformers import SentenceTransformer
-from src.shared.models import SceneEvent, AssetMatch
+from src.shared.models import SceneElement, AssetMatch
 from src.shared.config import ASSETS_DIR
 from src.library.indexer import Indexer
 
@@ -21,9 +21,8 @@ def echo(s=""):
 
 # Step 1: Load scenes
 with open(SCENES_PATH) as f:
-    events = [SceneEvent(**e) for e in json.load(f)]
-draw_events = [e for e in events if e.action == "draw"]
-echo(f"Loaded {len(draw_events)} draw events\n")
+    elements = [SceneElement(**e) for e in json.load(f)]
+echo(f"Loaded {len(elements)} scene elements\n")
 
 # Step 2: Build index
 indexer = Indexer(str(ASSETS_DIR))
@@ -48,14 +47,14 @@ if index:
     for fname, vec in zip(index.keys(), embeds):
         filename_embeddings[fname] = vec
 
-# Step 4: Query each draw event, show top-5 results
+# Step 4: Query each element, show top-5 results
 all_assets: list[AssetMatch] = []
 
-for ev in draw_events:
-    keyword = ev.search_keyword
+for el in elements:
+    keyword = el.keyword
     if not keyword:
-        echo(f"  Event #{ev.event_id}: empty keyword, skipping")
-        all_assets.append(AssetMatch(event_id=ev.event_id, svg_path="", keyword=keyword))
+        echo(f"  Element #{el.element_id}: empty keyword, skipping")
+        all_assets.append(AssetMatch(event_id=el.element_id, svg_path="", keyword=keyword))
         continue
 
     query_vec = model.encode(keyword, normalize_embeddings=True)
@@ -67,14 +66,18 @@ for ev in draw_events:
     scored.sort(key=lambda x: -x[0])
     top5 = scored[:5]
 
-    echo(f"  Event #{ev.event_id:>2} | keyword='{keyword}'")
+    echo(f"  Element #{el.element_id:>2} | keyword='{keyword}'")
     for rank, (score, fname) in enumerate(top5, 1):
         echo(f"         #{rank}: {fname:30s} (score={score:.3f})")
     echo()
 
+    candidates = [(fname, score) for score, fname in top5]
     best = scored[0][1] if scored else None
     best_path = str(ASSETS_DIR / f"{best}.svg") if best else ""
-    all_assets.append(AssetMatch(event_id=ev.event_id, svg_path=best_path, keyword=keyword))
+    all_assets.append(AssetMatch(
+        event_id=el.element_id, svg_path=best_path, keyword=keyword,
+        candidates=candidates
+    ))
 
 # Step 5: Save
 with open(OUTPUT_PATH, "w") as f:

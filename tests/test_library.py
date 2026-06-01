@@ -30,7 +30,10 @@ def test_keywords_for():
 def test_retriever_query():
     from src.library.retriever import Retriever
     r = Retriever(str(ASSETS_DIR))
-    path = r.query("circle")
+    path, candidates = r.query("circle")
     assert path is not None
     assert Path(path).exists()
     assert path.endswith(".svg")
+    assert len(candidates) >= 1
+    assert candidates[0][0] == "circle"
+    assert candidates[0][1] > 0.9

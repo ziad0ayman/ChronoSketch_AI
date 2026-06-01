@@ -80,32 +80,37 @@ class Retriever:
             for fname, vec in zip(self._index.keys(), embeds):
                 self._filename_embeddings[fname] = vec
 
-    def query(self, keyword: str) -> str | None:
+    def query(self, keyword: str, top_k: int = 5) -> tuple[str | None, list[tuple[str, float]]]:
         query_vec = self._model.encode(keyword, normalize_embeddings=True)
-        best_fname = None
-        best_score = -1.0
+        scored = []
         for fname, vec in self._filename_embeddings.items():
             score = float(query_vec @ vec)
-            if score > best_score:
-                best_score = score
-                best_fname = fname
+            scored.append((score, fname))
+        scored.sort(key=lambda x: -x[0])
+        candidates = [(fname, score) for score, fname in scored[:top_k]]
+
+        best_fname = candidates[0][0] if candidates else None
+        best_score = candidates[0][1] if candidates else -1.0
         local_path = str(ASSETS_DIR / f"{best_fname}.svg") if best_fname else None
         logger.info(f"Library query '{keyword}' → {best_fname} (score={best_score:.3f})")
 
         if local_path and best_score >= SIMILARITY_THRESHOLD:
-            return local_path
+            return local_path, candidates
 
         if best_score < SIMILARITY_THRESHOLD and ONLINE_SVG_FALLBACK:
             logger.info(f"Score {best_score:.3f} < {SIMILARITY_THRESHOLD}, trying online fallback for '{keyword}'")
             online = _fetch_svg_iconify(keyword)
             if online:
-                return online
+                return online, candidates
 
-        return local_path
+        return local_path, candidates
 
     def resolve_assets(self, keywords: list[tuple[int, str]]) -> list[AssetMatch]:
         results: list[AssetMatch] = []
         for event_id, keyword in keywords:
-            path = self.query(keyword)
-            results.append(AssetMatch(event_id=event_id, svg_path=path or "", keyword=keyword))
+            path, candidates = self.query(keyword)
+            results.append(AssetMatch(
+                event_id=event_id, svg_path=path or "", keyword=keyword,
+                candidates=candidates
+            ))
         return results

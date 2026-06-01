@@ -4,6 +4,7 @@ from svg.path import parse_path
 from src.shared.logger import logger
 
 _NS = "http://www.w3.org/2000/svg"
+_STROKEABLE_TAGS = ["path", "rect", "circle", "ellipse", "line", "polyline", "polygon"]
 
 
 def _parse_points(attr: str) -> list[tuple[float, float]]:
@@ -57,30 +58,24 @@ def _element_length(el: ET.Element, tag: str) -> float:
     return 0.0
 
 
-_STROKEABLE_TAGS = ["path", "rect", "circle", "ellipse", "line", "polyline", "polygon"]
+def total_length(svg_path: str) -> float:
+    tree = ET.parse(svg_path)
+    root = tree.getroot()
+    total = 0.0
+    for tag in _STROKEABLE_TAGS:
+        for el in root.findall(f".//{{{_NS}}}{tag}") or root.findall(f".//{tag}"):
+            total += _element_length(el, tag)
+    return total
 
 
-class Tracer:
-    def __init__(self, svg_path: str):
-        self._svg_path = svg_path
-        self._tree = ET.parse(svg_path)
-        self._root = self._tree.getroot()
-        self._elements: list[tuple[ET.Element, float]] = []
-        for tag in _STROKEABLE_TAGS:
-            found = self._root.findall(f".//{{{_NS}}}{tag}") or self._root.findall(f".//{tag}")
-            for el in found:
-                plen = _element_length(el, tag)
-                self._elements.append((el, plen))
-        logger.info(f"Tracer: {len(self._elements)} strokeable elements, total length={sum(p for _, p in self._elements):.1f}")
-
-    @property
-    def total_length(self) -> float:
-        return sum(p for _, p in self._elements)
-
-    def render_svg_at(self, progress: float) -> str:
-        progress = max(0.0, min(1.0, progress))
-        for el, plen in self._elements:
+def animate_svg(svg_path: str, progress: float) -> str:
+    progress = max(0.0, min(1.0, progress))
+    tree = ET.parse(svg_path)
+    root = tree.getroot()
+    for tag in _STROKEABLE_TAGS:
+        for el in root.findall(f".//{{{_NS}}}{tag}") or root.findall(f".//{tag}"):
+            plen = _element_length(el, tag)
             offset = plen * (1.0 - progress)
             el.set("stroke-dasharray", str(plen))
             el.set("stroke-dashoffset", str(offset))
-        return ET.tostring(self._root, encoding="unicode")
+    return ET.tostring(root, encoding="unicode")

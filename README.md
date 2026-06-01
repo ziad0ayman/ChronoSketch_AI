@@ -1,70 +1,101 @@
-# ChronoSketch_AI — Automated Whiteboard Animation System
+# ChronoSketch_AI — Automated Whiteboard Animation
 
-Turn any audio recording into a whiteboard-style animated video — complete with hand-drawn SVG illustrations and synchronized captions.
+Turn any audio recording into a whiteboard-style animated video with stroke-by-stroke SVG illustrations synced to speech.
 
-## How It Works
+## Pipeline
 
 ```
 audio.mp3
-  └─► [EAR: whisper] ──► word_timestamps.json
-  └─► [BRAIN: groq/llama3.3] ──► scene_plan.json
-  └─► [LIBRARY: all-MiniLM-L6-v2 + cosine sim] ──► svg_paths.json
-  └─► [HAND: stroke-dasharray tracer] ──► frame_*.png
-  └─► [DIRECTOR: ffmpeg] ──► output.mp4
+  └─► [EAR: whisper]        ──► words.json
+  └─► [BRAIN: groq/llama]   ──► scenes.json
+  └─► [LIBRARY: embeddings]  ──► assets.json (with candidates + scores)
+  └─► [HAND: cairosvg + PIL] ──► frame_*.png
+  └─► [DIRECTOR: ffmpeg]     ──► output.mp4
 ```
-
-The pipeline consists of 5 phases:
-
-1. **Ear** — Transcribes audio into word-level timestamps using OpenAI Whisper
-2. **Brain** — Uses Llama 3.3 (via Groq) to plan drawing scenes from the transcript
-3. **Library** — Embeds scene keywords and retrieves matching SVG icons via semantic similarity
-4. **Hand** — Animates SVGs using stroke-dasharray tracing, outputting PNG frames
-5. **Director** — Assembles frames + audio into the final MP4 via FFmpeg
-
-## Features
-
-- **No generative image models** — uses 1,700+ pre-verified Lucide SVG icons
-- **Chunked LLM processing** — 30s windows for bounded prompts and mid-video adaptation
-- **Velocity-based tracing** — perfect sync between drawing speed and narration
-- **Modular architecture** — 5 independent phases with JSON data contracts
-- **Skip any phase** — CLI flags let you restart from any checkpoint
 
 ## Requirements
 
 - Python 3.14+
-- FFmpeg (installed and on PATH)
+- FFmpeg (on PATH)
 - Groq API key (set `GROQ_API_KEY` in `.env`)
 
-## Installation
+## Install
 
 ```bash
-git clone https://github.com/ziad0ayman/ChronoSketch_AI.git
-cd ChronoSketch_AI
 pip install .
 ```
 
 ## Usage
 
 ```bash
-chronosketch --input audio.mp3 --output output.mp4
+# Full pipeline (interactive — prompts after each phase)
+python -m src.main -i input.wav -o output.mp4
+
+# Non-interactive (batch mode)
+python -m src.main -i input.wav -o output.mp4 -y
 ```
 
-Skip previously completed phases:
+### Per-phase review
+
+After each phase the pipeline pauses and shows a summary. Press Enter to continue, or `q` to quit and edit the JSON file manually, then resume with `--skip-*` flags:
+
 ```bash
-chronosketch --input audio.mp3 --skip-stt --skip-brain
+python -m src.main -i input.wav -o output.mp4 --skip-stt --skip-brain
 ```
 
-## Project Structure
+| Flag | Skips | Loads from |
+|---|---|---|
+| `--skip-stt` | Transcription | `data/transcripts/words.json` |
+| `--skip-brain` | LLM scene planning | `data/scenes/scenes.json` |
+| `--skip-library` | SVG retrieval | `data/scenes/assets.json` |
+| `--skip-render` | Frame rendering | `data/frames/` |
+
+### Phase 3 — candidate scores
+
+Assets display the top-5 semantic matches with cosine similarity so you can pick a different SVG:
+
+```
+  #3 'upload' -> upload-cloud.svg
+         #1: upload-cloud    (score=0.924)
+         #2: cloud-upload    (score=0.901)
+         #3: share           (score=0.674)
+         #4: hard-drive      (score=0.588)
+         #5: download        (score=0.572)
+```
+
+Quit, edit `data/scenes/assets.json`, change `svg_path` to a different candidate, then resume with `--skip-library`.
+
+### Debug phases
+
+Standalone per-phase debug scripts produce detailed logs:
+
+```bash
+python debug_phase1.py   # word timestamps
+python debug_phase2.py   # LLM scene plan
+python debug_phase3.py   # SVG candidates with scores
+python debug_phase4.py   # rendering timeline + tracer
+```
+
+## Architecture
 
 ```
 src/
-├── main.py              # Orchestrator
-├── ear/                 # Phase 1: Speech-to-text
-├── brain/               # Phase 2: Scene planning
-├── library/             # Phase 3: Asset retrieval
-├── hand/                # Phase 4: SVG animation
-├── director/            # Phase 5: Video assembly
-└── shared/              # Models & logger
+├── main.py               # Pipeline CLI with interactive checkpoints
+├── ear/transcriber.py    # Phase 1: Whisper → word timestamps
+├── brain/                # Phase 2: Groq LLM → scene+element plan
+│   ├── orchestrator.py   #   Scene planning, word-aligned timing
+│   └── schemas.py        #   Prompt builder + Pydantic models
+├── library/              # Phase 3: Semantic SVG retrieval
+│   ├── indexer.py        #   Build keyword index from filenames
+│   └── retriever.py      #   all-MiniLM-L6-v2 + cosine similarity
+├── hand/                 # Phase 4: SVG animation + frame compositing
+│   ├── tracer.py         #   Stateless stroke-dasharray animation
+│   ├── renderer.py       #   PIL-based multi-element compositing
+│   └── layout.py         #   Precomputed positions for 1-6 elements
+├── director/assembler.py # Phase 5: FFmpeg audio+frame assembly
+└── shared/               # Data models, config, logger
+    ├── models.py
+    └── config.py
 ```
 
 ## License
