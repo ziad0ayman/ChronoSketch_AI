@@ -75,7 +75,7 @@ def _stroke_width(root: ET.Element) -> str:
         w = float(parts[2])
     except (IndexError, ValueError):
         w = 24.0
-    return str(max(1, round(w / 12)))
+    return str(max(1, round(w / 24)))
 
 
 def _add_stroke_if_missing(el: ET.Element, sw: str) -> None:
