@@ -68,12 +68,21 @@ def total_length(svg_path: str) -> float:
     return total
 
 
+def _add_stroke_if_missing(el: ET.Element) -> None:
+    if el.get("stroke") is None or el.get("stroke") == "none":
+        el.set("stroke", "currentColor")
+        el.set("stroke-width", "2")
+        if el.get("fill") is None or el.get("fill") != "none":
+            el.set("fill", "none")
+
+
 def animate_svg(svg_path: str, progress: float) -> str:
     progress = max(0.0, min(1.0, progress))
     tree = ET.parse(svg_path)
     root = tree.getroot()
     for tag in _STROKEABLE_TAGS:
         for el in root.findall(f".//{{{_NS}}}{tag}") or root.findall(f".//{tag}"):
+            _add_stroke_if_missing(el)
             plen = _element_length(el, tag)
             offset = plen * (1.0 - progress)
             el.set("stroke-dasharray", str(plen))
