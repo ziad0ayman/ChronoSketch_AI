@@ -78,12 +78,16 @@ def _stroke_width(root: ET.Element) -> str:
     return str(max(1, round(w / 24)))
 
 
-def _add_stroke_if_missing(el: ET.Element, sw: str) -> None:
-    if el.get("stroke") is None or el.get("stroke") == "none":
-        el.set("stroke", "currentColor")
-        el.set("stroke-width", sw)
-        if el.get("fill") is None or el.get("fill") != "none":
-            el.set("fill", "none")
+def _add_stroke_if_missing(el: ET.Element, root: ET.Element, sw: str) -> None:
+    if el.get("stroke") is not None and el.get("stroke") != "none":
+        return
+    root_stroke = root.get("stroke")
+    if root_stroke is not None and root_stroke != "none":
+        return
+    el.set("stroke", "currentColor")
+    el.set("stroke-width", sw)
+    if el.get("fill") is None or el.get("fill") != "none":
+        el.set("fill", "none")
 
 
 def animate_svg(svg_path: str, progress: float) -> str:
@@ -93,7 +97,7 @@ def animate_svg(svg_path: str, progress: float) -> str:
     sw = _stroke_width(root)
     for tag in _STROKEABLE_TAGS:
         for el in root.findall(f".//{{{_NS}}}{tag}") or root.findall(f".//{tag}"):
-            _add_stroke_if_missing(el, sw)
+            _add_stroke_if_missing(el, root, sw)
             plen = _element_length(el, tag)
             offset = plen * (1.0 - progress)
             el.set("stroke-dasharray", str(plen))
