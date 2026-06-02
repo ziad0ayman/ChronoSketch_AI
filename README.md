@@ -1,6 +1,6 @@
 # ChronoSketch_AI — Automated Whiteboard Animation
 
-Turn any audio recording into a whiteboard-style animated video with stroke-by-stroke SVG illustrations synced to speech.
+Turn any audio recording into a whiteboard-style animated video with stroke-by-stroke SVG illustrations on a paper-textured background, synced to speech.
 
 ## Pipeline
 
@@ -9,7 +9,7 @@ audio.mp3
   └─► [EAR: whisper]        ──► words.json
   └─► [BRAIN: groq/llama]   ──► scenes.json
   └─► [LIBRARY: embeddings]  ──► assets.json (with candidates + scores)
-  └─► [HAND: cairosvg + PIL] ──► frame_*.png
+  └─► [HAND: cairosvg + PIL] ──► frame_*.png (paper texture background)
   └─► [DIRECTOR: ffmpeg]     ──► output.mp4
 ```
 

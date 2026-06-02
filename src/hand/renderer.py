@@ -8,6 +8,7 @@ from src.shared.models import SceneElement, AssetMatch
 from src.shared.config import FPS, CANVAS_WIDTH, CANVAS_HEIGHT
 from src.hand.tracer import animate_svg
 from src.hand.layout import icon_size
+from src.hand.texture import paper_background
 
 _BLANK_SVG = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_WIDTH}" height="{CANVAS_HEIGHT}">
   <rect width="100%" height="100%" fill="white"/>
@@ -54,7 +55,7 @@ class Renderer:
             output_height=CANVAS_HEIGHT,
         )
         img = Image.open(io.BytesIO(png_bytes))
-        bg = Image.new("RGBA", img.size, "WHITE")
+        bg = paper_background().convert("RGBA")
         bg.paste(img, (0, 0), img if img.mode == "RGBA" else None)
         png_path = self._output_dir / f"frame_{frame_idx:06d}.png"
         bg.convert("RGB").save(png_path, "PNG")
@@ -80,7 +81,7 @@ class Renderer:
 
             for j in range(n_frames):
                 progress = (j + 1) / n_frames
-                canvas = Image.new("RGBA", (CANVAS_WIDTH, CANVAS_HEIGHT), "WHITE")
+                canvas = paper_background().convert("RGBA")
 
                 # Paste all completed (previous) icons — fully drawn
                 for prev_el in elements[:idx]:
