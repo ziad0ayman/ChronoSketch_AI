@@ -23,10 +23,17 @@ def test_reveal_mask_empty():
 
 
 def test_reveal_mask_half():
-    """Default (diagonal_bounce) at 50% reveals top-left triangle (x+y<=179)."""
+    """Default (pen_path) at 50% — pen stroke midpoint should be full white."""
     mask = reveal_mask((180, 180), 0.5)
-    assert mask.getpixel((40, 90)) == 255   # 40+90=130 <= 179
-    assert mask.getpixel((140, 90)) == 0    # 140+90=230 > 179
+    # Midpoint of first stroke from (8, 16) up-right to (~24, 0) is ~(16, 8)
+    # BoxBlur(3) on 14px-wide stroke keeps center at 255
+    assert mask.getpixel((16, 8)) == 255
+
+
+def test_reveal_mask_diagonal_bounce_half():
+    mask = reveal_mask((180, 180), 0.5, direction="diagonal_bounce")
+    assert mask.getpixel((40, 90)) == 255
+    assert mask.getpixel((140, 90)) == 0
 
 
 def test_reveal_mask_left_to_right_half():
@@ -104,19 +111,20 @@ def test_renderer_scene_compositing(tmp_path):
         f"Element 1 (completed): only {el1_found}/{el1_checked} pixels visible"
     )
 
-    # Element 2 (1280, 540) is current at ~50% diagonal_bounce reveal
-    # Diagonal projection threshold at 50%: x+y <= _ICON_SIZE*2-3 ≈ 179
-    diag_threshold = _ICON_SIZE * 2 - 3  # 179 for 180px (max_p * 0.5)
-    revealed_coords = coords[coords[:, 1] + coords[:, 0] <= diag_threshold]
+    # Element 2 (1280, 540) at 50% pen_path — check pixels where pen has passed
+    from src.hand.tracer import reveal_mask
+    pe_mask = np.array(reveal_mask((_ICON_SIZE, _ICON_SIZE), 0.5))
+    revealed_region = (pe_mask > 128) & (arr_icon[:, :, 3] > 128)
+    revealed_yx = np.argwhere(revealed_region)
     el2_found = 0
-    for y, x in revealed_coords[::20]:
+    for y, x in revealed_yx[::50]:
         wx = int(1280 - _ICON_HALF + x)
         wy = int(540 - _ICON_HALF + y)
         pixel = frame.getpixel((wx, wy))
         if all(c < 100 for c in pixel):
             el2_found += 1
     assert el2_found >= 1, (
-        f"Element 2 (current, 50% diagonal reveal): no revealed pixels visible"
+        f"Element 2 (current, 50% pen): 0/{len(revealed_yx)} revealed pixels visible"
     )
 
 
