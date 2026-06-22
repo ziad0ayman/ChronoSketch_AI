@@ -1,6 +1,6 @@
 from pathlib import Path
 from src.shared.models import SceneElement, AssetMatch
-from src.hand.tracer import animate_svg, total_length as tracer_len
+from src.hand.tracer import reveal_mask
 from src.hand.renderer import Renderer
 from src.shared.config import ASSETS_DIR
 
@@ -10,31 +10,29 @@ def _test_svg() -> str:
     return str(svgs[0]) if svgs else ""
 
 
-def test_tracer_parses_paths():
-    svg = _test_svg()
-    if not svg:
-        return
-    assert tracer_len(svg) > 0
+def test_reveal_mask_full():
+    mask = reveal_mask((180, 180), 1.0)
+    assert mask.getpixel((0, 0)) == 255
+    assert mask.getpixel((179, 179)) == 255
 
 
-def test_tracer_preserves_original_viewbox():
-    svg = _test_svg()
-    if not svg:
-        return
-    xml = animate_svg(svg, 0.0)
-    assert 'viewBox="0 0 24 24"' in xml
-    assert "stroke-dasharray" in xml
+def test_reveal_mask_empty():
+    mask = reveal_mask((180, 180), 0.0)
+    assert mask.getpixel((0, 0)) == 0
+    assert mask.getpixel((179, 179)) == 0
 
 
-def test_tracer_render_svg_at():
-    svg = _test_svg()
-    if not svg:
-        return
-    xml0 = animate_svg(svg, 0.0)
-    xml1 = animate_svg(svg, 1.0)
-    assert "stroke-dasharray" in xml0
-    assert "stroke-dashoffset" in xml0
-    assert xml0 != xml1
+def test_reveal_mask_half():
+    """Default (diagonal_bounce) at 50% reveals top-left triangle (x+y<=179)."""
+    mask = reveal_mask((180, 180), 0.5)
+    assert mask.getpixel((40, 90)) == 255   # 40+90=130 <= 179
+    assert mask.getpixel((140, 90)) == 0    # 140+90=230 > 179
+
+
+def test_reveal_mask_left_to_right_half():
+    mask = reveal_mask((180, 180), 0.5, direction="left_to_right")
+    assert mask.getpixel((40, 90)) == 255
+    assert mask.getpixel((140, 90)) == 0
 
 
 def test_renderer_produces_white_background(tmp_path):
@@ -82,44 +80,43 @@ def test_renderer_scene_compositing(tmp_path):
     pngs = list(tmp_path.glob("*.png"))
     assert len(pngs) == total
 
-    # Frame 25 is the second frame of element 2 (after 24 frames of element 1)
-    # It should show both elements
-    from src.hand.renderer import _prep_icon, _ICON_HALF
-    _, icon_img = _prep_icon(svg)
+    from src.hand.renderer import _prep_icon, _ICON_HALF, _ICON_SIZE
+    icon_img = _prep_icon(svg)
     arr_icon = np.array(icon_img)
-    mask = arr_icon[:, :, 3] > 128
-    stroke_coords = np.argwhere(mask)
-    assert len(stroke_coords) > 0, "Icon has no stroke pixels!"
+    alpha = arr_icon[:, :, 3] > 128
+    coords = np.argwhere(alpha)
+    assert len(coords) > 0, "Icon has no opaque pixels!"
 
-    frame = Image.open(pngs[25])
+    # Frame 35 is ~1.46s into video, mid-way through element 2 (progress ~50%)
+    frame = Image.open(pngs[35])
 
-    # Sample stroke positions and verify they're dark (i.e., rendered) on frame
     # Element 1 (640, 540) is completed — should be nearly fully visible
     el1_found = 0
     el1_checked = 0
-    for sy, sx in stroke_coords[::50]:
-        wx = int(640 - _ICON_HALF + sx)
-        wy = int(540 - _ICON_HALF + sy)
+    for y, x in coords[::50]:
+        wx = int(640 - _ICON_HALF + x)
+        wy = int(540 - _ICON_HALF + y)
         pixel = frame.getpixel((wx, wy))
         if all(c < 100 for c in pixel):
             el1_found += 1
         el1_checked += 1
     assert el1_found >= el1_checked * 0.8, (
-        f"Element 1 (completed): only {el1_found}/{el1_checked} stroke pixels visible"
+        f"Element 1 (completed): only {el1_found}/{el1_checked} pixels visible"
     )
 
-    # Element 2 (1280, 540) is current — should have at least some strokes visible
+    # Element 2 (1280, 540) is current at ~50% diagonal_bounce reveal
+    # Diagonal projection threshold at 50%: x+y <= _ICON_SIZE*2-3 ≈ 179
+    diag_threshold = _ICON_SIZE * 2 - 3  # 179 for 180px (max_p * 0.5)
+    revealed_coords = coords[coords[:, 1] + coords[:, 0] <= diag_threshold]
     el2_found = 0
-    el2_checked = 0
-    for sy, sx in stroke_coords[::50]:
-        wx = int(1280 - _ICON_HALF + sx)
-        wy = int(540 - _ICON_HALF + sy)
+    for y, x in revealed_coords[::20]:
+        wx = int(1280 - _ICON_HALF + x)
+        wy = int(540 - _ICON_HALF + y)
         pixel = frame.getpixel((wx, wy))
         if all(c < 100 for c in pixel):
             el2_found += 1
-        el2_checked += 1
     assert el2_found >= 1, (
-        f"Element 2 (current): no stroke pixels visible (progress ~8%)"
+        f"Element 2 (current, 50% diagonal reveal): no revealed pixels visible"
     )
 
 

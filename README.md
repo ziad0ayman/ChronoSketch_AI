@@ -9,7 +9,7 @@ audio.mp3
   └─► [EAR: whisper]        ──► words.json
   └─► [BRAIN: groq/llama]   ──► scenes.json
   └─► [LIBRARY: embeddings]  ──► assets.json (with candidates + scores)
-  └─► [HAND: cairosvg + PIL] ──► frame_*.png (paper texture background)
+  └─► [HAND: cairosvg + PIL] ──► frame_*.png (paper texture, diagonal bounce reveal)
   └─► [DIRECTOR: ffmpeg]     ──► output.mp4
 ```
 
@@ -88,8 +88,8 @@ src/
 ├── library/              # Phase 3: Semantic SVG retrieval
 │   ├── indexer.py        #   Build keyword index from filenames
 │   └── retriever.py      #   all-MiniLM-L6-v2 + cosine similarity
-├── hand/                 # Phase 4: SVG animation + frame compositing
-│   ├── tracer.py         #   Stateless stroke-dasharray animation
+├── hand/                 # Phase 4: SVG render + frame compositing
+│   ├── tracer.py         #   Reveal mask (diagonal bounce wipe)
 │   ├── renderer.py       #   PIL-based multi-element compositing
 │   └── layout.py         #   Precomputed positions for 1-6 elements
 ├── director/assembler.py # Phase 5: FFmpeg audio+frame assembly

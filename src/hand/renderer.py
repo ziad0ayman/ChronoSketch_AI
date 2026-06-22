@@ -6,9 +6,10 @@ from PIL import Image
 from src.shared.logger import logger
 from src.shared.models import SceneElement, AssetMatch
 from src.shared.config import FPS, CANVAS_WIDTH, CANVAS_HEIGHT
-from src.hand.tracer import animate_svg
+from src.hand.tracer import reveal_mask
 from src.hand.layout import icon_size
 from src.hand.texture import paper_background
+from src.shared.config import REVEAL_DIRECTION
 
 _BLANK_SVG = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_WIDTH}" height="{CANVAS_HEIGHT}">
   <rect width="100%" height="100%" fill="white"/>
@@ -29,18 +30,14 @@ def _render_svg_to_image(svg_xml: str, width: int, height: int) -> Image.Image:
     return img.convert("RGBA") if img.mode != "RGBA" else img
 
 
-def _prep_icon(svg_path: str, anim_progress: float | None = None) -> tuple[str, Image.Image]:
-    """Return (svg_xml, rendered RGBA image) for an icon at _ICON_SIZE."""
-    if anim_progress is not None:
-        svg = animate_svg(svg_path, anim_progress)
-    else:
-        with open(svg_path) as f:
-            svg = f.read()
+def _prep_icon(svg_path: str) -> Image.Image:
+    """Render an SVG icon to an RGBA PIL Image at _ICON_SIZE."""
+    with open(svg_path) as f:
+        svg = f.read()
     svg = svg.replace('width="24"', f'width="{_ICON_SIZE}"')
     svg = svg.replace('height="24"', f'height="{_ICON_SIZE}"')
     svg = svg.replace('stroke="currentColor"', 'stroke="black"')
-    img = _render_svg_to_image(svg, _ICON_SIZE, _ICON_SIZE)
-    return svg, img
+    return _render_svg_to_image(svg, _ICON_SIZE, _ICON_SIZE)
 
 
 class Renderer:
@@ -72,12 +69,16 @@ class Renderer:
         for el in elements:
             asset = asset_map.get(el.element_id)
             if asset and asset.svg_path:
-                _, img = _prep_icon(asset.svg_path)
-                full_icons[el.element_id] = img
+                full_icons[el.element_id] = _prep_icon(asset.svg_path)
+
+        _transparent = Image.new("RGBA", (_ICON_SIZE, _ICON_SIZE), (0, 0, 0, 0))
 
         for idx, el in enumerate(elements):
             duration = max(el.end_time - el.start_time, _MIN_ELEMENT_DURATION)
             n_frames = max(int(duration * FPS), 1)
+            full_img = full_icons.get(el.element_id)
+            tx = int(el.pos_x - _ICON_HALF)
+            ty = int(el.pos_y - _ICON_HALF)
 
             for j in range(n_frames):
                 progress = (j + 1) / n_frames
@@ -86,18 +87,16 @@ class Renderer:
                 # Paste all completed (previous) icons — fully drawn
                 for prev_el in elements[:idx]:
                     if prev_el.element_id in full_icons:
-                        tx = int(prev_el.pos_x - _ICON_HALF)
-                        ty = int(prev_el.pos_y - _ICON_HALF)
-                        canvas.paste(full_icons[prev_el.element_id], (tx, ty),
+                        ptx = int(prev_el.pos_x - _ICON_HALF)
+                        pty = int(prev_el.pos_y - _ICON_HALF)
+                        canvas.paste(full_icons[prev_el.element_id], (ptx, pty),
                                      full_icons[prev_el.element_id])
 
-                # Paste current element — animated
-                asset = asset_map.get(el.element_id)
-                if asset and asset.svg_path:
-                    _, cur_img = _prep_icon(asset.svg_path, anim_progress=progress)
-                    tx = int(el.pos_x - _ICON_HALF)
-                    ty = int(el.pos_y - _ICON_HALF)
-                    canvas.paste(cur_img, (tx, ty), cur_img)
+                # Paste current element — revealed via mask wipe
+                if full_img:
+                    mask = reveal_mask((_ICON_SIZE, _ICON_SIZE), progress, REVEAL_DIRECTION)
+                    revealed = Image.composite(full_img, _transparent, mask)
+                    canvas.paste(revealed, (tx, ty), revealed)
 
                 self._save_frame(canvas, frame_offset + total + j)
 
