@@ -6,7 +6,7 @@ _REVEAL_DIRECTIONS = ("left_to_right", "right_to_left", "top_to_bottom", "bottom
 _BLUR_RADIUS = 3
 _DIAGONAL_CYCLES = 3
 _PEN_MARGIN = 8
-_PEN_WIDTH = 8
+_PEN_WIDTH = 28
 _PEN_STROKES = 14
 _FILL_START = 0.55
 
