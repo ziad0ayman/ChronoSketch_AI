@@ -163,7 +163,7 @@ def main():
     if not args.skip_render:
         logger.info("=== Phase 4: The Hand ===")
         renderer = Renderer()
-        renderer.render_all(elements, assets, total_duration=total_duration)
+        renderer.render_all(elements, assets, total_duration=total_duration, words=words)
 
     # Phase 5: Director
     logger.info("=== Phase 5: The Director ===")

@@ -2,9 +2,9 @@ import io
 import shutil
 from pathlib import Path
 import cairosvg
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFont
 from src.shared.logger import logger
-from src.shared.models import SceneElement, AssetMatch
+from src.shared.models import SceneElement, AssetMatch, WordTimestamp
 from src.shared.config import FPS, CANVAS_WIDTH, CANVAS_HEIGHT
 from src.hand.tracer import reveal_mask
 from src.hand.layout import icon_size
@@ -18,6 +18,82 @@ _BLANK_SVG = f"""<svg xmlns="http://www.w3.org/2000/svg" width="{CANVAS_WIDTH}" 
 _ICON_SIZE = icon_size()
 _ICON_HALF = _ICON_SIZE // 2
 _MIN_ELEMENT_DURATION = 0.1
+_CAPTION_FONT_SIZE = 30
+_CAPTION_PAD = 10
+_CAPTION_WINDOW = 8
+_CAPTION_MARGIN_BOTTOM = 70
+
+_CAPTION_FONT: ImageFont.ImageFont | None = None
+
+
+def _get_caption_font() -> ImageFont.ImageFont:
+    global _CAPTION_FONT
+    if _CAPTION_FONT is not None:
+        return _CAPTION_FONT
+    for name in ("segoeui.ttf", "arial.ttf", "calibri.ttf"):
+        try:
+            _CAPTION_FONT = ImageFont.truetype(name, _CAPTION_FONT_SIZE)
+            return _CAPTION_FONT
+        except (IOError, OSError):
+            continue
+    _CAPTION_FONT = ImageFont.load_default()
+    return _CAPTION_FONT
+
+
+def _render_captions(canvas: Image.Image, words: list[WordTimestamp], current_time: float) -> None:
+    if not words:
+        return
+
+    current_idx = -1
+    for i, w in enumerate(words):
+        if w.start <= current_time <= w.end:
+            current_idx = i
+            break
+    if current_idx < 0:
+        return
+
+    font = _get_caption_font()
+    cw, ch = canvas.size
+
+    window_start = max(0, current_idx - _CAPTION_WINDOW)
+    parts = [words[i].word for i in range(window_start, current_idx + 1)]
+    full_text = " ".join(parts)
+
+    bbox = canvas.getbbox() or (0, 0, 0, 0)
+    full_bbox = ImageDraw.Draw(canvas).textbbox((0, 0), full_text, font=font)
+    text_w = full_bbox[2] - full_bbox[0]
+    text_h = full_bbox[3] - full_bbox[1]
+
+    x = (cw - text_w) // 2
+    y = ch - _CAPTION_MARGIN_BOTTOM - text_h
+
+    bg = Image.new("RGBA", canvas.size, (0, 0, 0, 0))
+    bg_draw = ImageDraw.Draw(bg)
+    bg_draw.rectangle(
+        [x - _CAPTION_PAD, y - _CAPTION_PAD, x + text_w + _CAPTION_PAD, y + text_h + _CAPTION_PAD],
+        fill=(255, 255, 255, 220),
+    )
+    canvas.paste(bg, (0, 0), bg)
+
+    draw = ImageDraw.Draw(canvas)
+    prefix = ""
+    for i in range(window_start, current_idx + 1):
+        w = words[i]
+        word_text = w.word
+        pbox = draw.textbbox((0, 0), prefix, font=font)
+        wx = x + (pbox[2] - pbox[0])
+        if prefix:
+            wx += draw.textbbox((0, 0), " ", font=font)[2] - draw.textbbox((0, 0), " ", font=font)[0]
+
+        color = (120, 120, 120) if i < current_idx else (30, 30, 30)
+        draw.text((wx, y), word_text, fill=color, font=font)
+
+        if i == current_idx:
+            wbox = draw.textbbox((0, 0), word_text, font=font)
+            ww = wbox[2] - wbox[0]
+            draw.line([(wx, y + text_h + 2), (wx + ww, y + text_h + 2)], fill=(50, 110, 200), width=2)
+
+        prefix = prefix + (" " if prefix else "") + word_text
 
 
 def _render_svg_to_image(svg_xml: str, width: int, height: int) -> Image.Image:
@@ -45,23 +121,25 @@ class Renderer:
         self._output_dir = Path(output_dir)
         self._output_dir.mkdir(parents=True, exist_ok=True)
 
-    def _render_svg_to_png(self, svg_xml: str, frame_idx: int) -> None:
-        png_bytes = cairosvg.svg2png(
-            bytestring=svg_xml.encode("utf-8"),
-            output_width=CANVAS_WIDTH,
-            output_height=CANVAS_HEIGHT,
-        )
-        img = Image.open(io.BytesIO(png_bytes))
-        bg = paper_background().convert("RGBA")
-        bg.paste(img, (0, 0), img if img.mode == "RGBA" else None)
-        png_path = self._output_dir / f"frame_{frame_idx:06d}.png"
-        bg.convert("RGB").save(png_path, "PNG")
-
     def _save_frame(self, canvas: Image.Image, frame_idx: int) -> None:
         png_path = self._output_dir / f"frame_{frame_idx:06d}.png"
         canvas.convert("RGB").save(png_path, "PNG")
 
+    def _annotate_frame(self, frame_idx: int) -> None:
+        if not self._words:
+            return
+        png_path = self._output_dir / f"frame_{frame_idx:06d}.png"
+        img = Image.open(png_path).convert("RGBA")
+        _render_captions(img, self._words, frame_idx / FPS)
+        img.convert("RGB").save(png_path, "PNG")
+
+    def _save_blank_frame(self, frame_idx: int) -> None:
+        canvas = paper_background().convert("RGBA")
+        _render_captions(canvas, self._words or [], frame_idx / FPS)
+        self._save_frame(canvas, frame_idx)
+
     def _render_scene(self, elements: list[SceneElement], asset_map: dict, frame_offset: int) -> int:
+        words = self._words or []
         total = 0
 
         # Pre-render fully-drawn icons for ALL elements in this scene
@@ -98,7 +176,9 @@ class Renderer:
                     revealed = Image.composite(full_img, _transparent, mask)
                     canvas.paste(revealed, (tx, ty), revealed)
 
-                self._save_frame(canvas, frame_offset + total + j)
+                frame_idx = frame_offset + total + j
+                _render_captions(canvas, words, frame_idx / FPS)
+                self._save_frame(canvas, frame_idx)
 
             total += n_frames
             logger.info(f"Element {el.element_id}: {n_frames} frames rendered")
@@ -110,7 +190,9 @@ class Renderer:
         dst = self._output_dir / f"frame_{dst_idx:06d}.png"
         shutil.copy2(src, dst)
 
-    def render_all(self, elements: list[SceneElement], assets: list[AssetMatch], total_duration: float = 0.0) -> int:
+    def render_all(self, elements: list[SceneElement], assets: list[AssetMatch], total_duration: float = 0.0,
+                   words: list[WordTimestamp] | None = None) -> int:
+        self._words = words
         asset_map = {a.event_id: a for a in assets}
         total = 0
 
@@ -133,12 +215,13 @@ class Renderer:
                 gap_frames = int(gap * FPS)
                 for i in range(gap_frames):
                     self._copy_frame(total - 1, total + i)
+                    self._annotate_frame(total + i)
                 total += gap_frames
                 logger.info(f"Gap before scene {sid}: {gap_frames} persist frames ({gap:.2f}s)")
             elif gap > 0.01 and total == 0:
                 gap_frames = int(gap * FPS)
                 for i in range(gap_frames):
-                    self._render_svg_to_png(_BLANK_SVG, total + i)
+                    self._save_blank_frame(total + i)
                 total += gap_frames
                 logger.info(f"Gap before scene {sid}: {gap_frames} blank frames ({gap:.2f}s)")
 
@@ -151,8 +234,9 @@ class Renderer:
             for i in range(total, needed):
                 if total > 0:
                     self._copy_frame(total - 1, i)
+                    self._annotate_frame(i)
                 else:
-                    self._render_svg_to_png(_BLANK_SVG, i)
+                    self._save_blank_frame(i)
             total = needed
 
         logger.info(f"Total frames rendered: {total}")
