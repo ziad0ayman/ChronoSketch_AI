@@ -6,8 +6,9 @@ _REVEAL_DIRECTIONS = ("left_to_right", "right_to_left", "top_to_bottom", "bottom
 _BLUR_RADIUS = 3
 _DIAGONAL_CYCLES = 3
 _PEN_MARGIN = 8
-_PEN_WIDTH = 14
-_PEN_STROKES = 8
+_PEN_WIDTH = 8
+_PEN_STROKES = 14
+_FILL_START = 0.55
 
 
 def reveal_mask(size: tuple[int, int], progress: float, direction: str = "pen_path") -> Image.Image:
@@ -42,6 +43,34 @@ def reveal_mask(size: tuple[int, int], progress: float, direction: str = "pen_pa
     return mask.filter(ImageFilter.BoxBlur(_BLUR_RADIUS))
 
 
+def _distance_fill(mask_bool: np.ndarray) -> np.ndarray:
+    """Compute Manhattan distance from each cell to nearest True cell."""
+    h, w = mask_bool.shape
+    dist = np.full((h, w), h + w, dtype=np.float64)
+    dist[mask_bool] = 0.0
+    for y in range(h):
+        for x in range(w):
+            if y > 0:
+                d = dist[y - 1, x] + 1.0
+                if d < dist[y, x]:
+                    dist[y, x] = d
+            if x > 0:
+                d = dist[y, x - 1] + 1.0
+                if d < dist[y, x]:
+                    dist[y, x] = d
+    for y in range(h - 1, -1, -1):
+        for x in range(w - 1, -1, -1):
+            if y < h - 1:
+                d = dist[y + 1, x] + 1.0
+                if d < dist[y, x]:
+                    dist[y, x] = d
+            if x < w - 1:
+                d = dist[y, x + 1] + 1.0
+                if d < dist[y, x]:
+                    dist[y, x] = d
+    return dist
+
+
 def _pen_path_mask(w: int, h: int, progress: float) -> Image.Image:
     path = _generate_pen_path(w, h)
     total_len = sum(math.dist(path[i], path[i + 1]) for i in range(len(path) - 1))
@@ -62,6 +91,18 @@ def _pen_path_mask(w: int, h: int, progress: float) -> Image.Image:
         draw.line([path[i], path[i + 1]], fill=255, width=_PEN_WIDTH)
         accumulated += seg_len
 
+    arr = np.array(mask, dtype=np.uint8)
+
+    if progress > _FILL_START and np.any(arr > 0):
+        dist = _distance_fill(arr > 0)
+        max_dist = np.max(dist)
+        if max_dist > 0:
+            fill_t = (progress - _FILL_START) / (1.0 - _FILL_START)
+            fill_t = min(1.0, fill_t ** 2)
+            reveal = dist <= max_dist * fill_t
+            arr = np.where(reveal, 255, arr).astype(np.uint8)
+
+    mask = Image.fromarray(arr, mode="L")
     return mask.filter(ImageFilter.BoxBlur(_BLUR_RADIUS))
 
 
